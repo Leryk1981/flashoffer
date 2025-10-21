@@ -259,6 +259,16 @@
       </div>
       <div><label>Seller E-mail (notifications)</label><input id="seller_email" type="email" placeholder="owner@example.com" /></div>
       <div><label>Lock URL (Apps Script)</label><input id="lockurl" placeholder="https://script.google.com/macros/s/XXXX/exec" /></div>
+	  <div class="row">
+		  <div>
+			<label>License key</label>
+			<input id="license_key" placeholder="FO-PL-2025-XXXXX" />
+		  </div>
+		</div>
+		<div class="mut" style="margin-top:6px">
+		  Lock URL — Twój adres Web App (Google Apps Script).<br/>
+		  License key — klucz aktywacyjny od dostawcy (wymagany do działania).
+		</div>
     </div>
     <div class="stack">
       <button class="btn" id="gen">Generate Link</button>
@@ -267,9 +277,11 @@
     <div id="out" class="hid">
       <div class="line"></div>
       <div class="row"><div><label>Shareable Link</label><input id="link" readonly /></div></div>
+      <div class="row"><div><label>Social Link</label><input id="link_social" readonly /></div></div>
       <div class="stack">
         <button class="btn inline" id="copy">Copy</button>
         <button class="btn inline" id="open">Open</button>
+		<button class="btn inline" id="copy_social">Copy Social</button>
       </div>
       <div class="mut" style="margin-top:8px">Config is encrypted in <b>#hash</b>. Open/host via HTTPS (e.g., GitHub Pages).</div>
     </div>
@@ -408,49 +420,68 @@
 
   // ---------- setup ----------
   function enterSetup(){
-    $('viewer').classList.add('hid'); $('setup').classList.remove('hid');
+    $("viewer").classList.add('hid'); $("setup").classList.remove('hid');
     const last = JSON.parse(localStorage.getItem('flashoffer:last')||'null') || {};
-    $('title').value = last.title || 'Special Offer';
-    $('desc').value  = last.desc  || '';
-    $('item_name').value  = last.item_name || '';
-    $('item_url').value   = last.item_url  || '';
-    $('item_image').value = last.item_image|| '';
-    $('vendor').value     = last.vendor    || '';
-    $('start').value = last.start ? toLocalISO(last.start) : toLocalISO(Date.now()+15*60000);
-    $('dur').value   = last.dur   || 30;
-    $('tz').value    = last.tz    || 'Europe/Warsaw';
-    $('qty').value   = last.qty   || 1;
-    $('lang').value  = last.lang  || 'pl';
-    $('seller_email').value = last.seller_email || '';
-    $('lockurl').value = last.lockurl || '';
+    $("title").value = last.title || 'Special Offer';
+    $("desc").value  = last.desc  || '';
+    $("item_name").value  = last.item_name || '';
+    $("item_url").value   = last.item_url  || '';
+    $("item_image").value = last.item_image|| '';
+    $("vendor").value     = last.vendor    || '';
+    $("start").value = last.start ? toLocalISO(last.start) : toLocalISO(Date.now()+15*60000);
+    $("dur").value   = last.dur   || 30;
+    $("tz").value    = last.tz    || 'Europe/Warsaw';
+    $("qty").value   = last.qty   || 1;
+    $("lang").value  = last.lang  || 'pl';
+    $("seller_email").value = last.seller_email || '';
+    $("lockurl").value = last.lockurl || '';
+	$("license_key").value = last.license_key || '';
 
-    $('gen').onclick = ()=>{
-      const cfg = readCfg(); const url = location.href.split('#')[0] + '#' + makeHash(cfg);
-      $('link').value = url; $('out').classList.remove('hid');
+    $("gen").onclick = ()=>{
+      const cfg = readCfg();
+	  const base = location.href.split('#')[0];
+	  const hash = makeHash(cfg);                  // "fsl=<b64url-json>"
+	  const direct = base + '#' + hash;
+	  $("link").value = direct;
+
+	  const lock = $("lockurl").value.trim();
+	  // social URL строим только если есть Lock URL
+	  const social = lock
+		? lock.split('?')[0]
+			+ '?share=1'
+			+ '&fsl='  + encodeURIComponent(hash.slice(4)) // убрать "fsl=" префикс
+			+ '&base=' + encodeURIComponent(base)
+			+ (cfg.license_key ? ('&license_key=' + encodeURIComponent(cfg.license_key)) : '')
+		: direct;
+
+	  $("link_social").value = social;
+
+      $("out").classList.remove('hid');
       localStorage.setItem('flashoffer:last', JSON.stringify(cfg));
     };
-    $('preview').onclick = ()=>{
+    $("preview").onclick = ()=>{
       const cfg = readCfg(); localStorage.setItem('flashoffer:last', JSON.stringify(cfg));
       location.hash = makeHash(cfg); render();
     };
-    $('copy').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('link').value); }catch{ $('link').select(); } };
-    $('open').onclick = ()=> window.open($('link').value,'_blank');
+    $("copy").onclick = async ()=>{ try{ await navigator.clipboard.writeText($("link").value); }catch{ $("link").select(); } };
+    $("open").onclick = ()=> window.open($("link").value,'_blank');
 
     function readCfg(){
       return {
-        title: $('title').value.trim(),
-        desc:  $('desc').value.trim(),
-        item_name:  $('item_name').value.trim(),
-        item_url:   $('item_url').value.trim(),
-        item_image: $('item_image').value.trim(),
-        vendor:     $('vendor').value.trim(),
-        start: new Date($('start').value).toISOString(),
-        dur:   Math.max(5, parseInt($('dur').value,10)||30),
-        tz:    $('tz').value,
-        qty:   Math.max(1, parseInt($('qty').value,10)||1),
-        lang:  $('lang').value,
-        seller_email: $('seller_email').value.trim(),
-        lockurl: $('lockurl').value.trim(),
+        title: $("title").value.trim(),
+        desc:  $("desc").value.trim(),
+        item_name:  $("item_name").value.trim(),
+        item_url:   $("item_url").value.trim(),
+        item_image: $("item_image").value.trim(),
+        vendor:     $("vendor").value.trim(),
+        start: new Date($("start").value).toISOString(),
+        dur:   Math.max(5, parseInt($("dur").value,10)||30),
+        tz:    $("tz").value,
+        qty:   Math.max(1, parseInt($("qty").value,10)||1),
+        lang:  $("lang").value,
+        seller_email: $("seller_email").value.trim(),
+        lockurl: $("lockurl").value.trim(),
+		license_key: $("license_key").value.trim(),
         token: crypto.getRandomValues(new Uint8Array(8)).reduce((s,b)=>s+('0'+b.toString(16)).slice(-2),'')
       };
     }
@@ -461,67 +492,88 @@
 
   function setLang(lang){
     T = I18N[lang] || I18N.pl;
-    $('lbl_phone').textContent = T.phoneLabel;
-    $('lbl_email').textContent = T.emailLabel;
-    $('claim').textContent = T.reserve;
-    $('ics').textContent = T.addToCal;
-    $('openItem').textContent = T.open;
+    $("lbl_phone").textContent = T.phoneLabel;
+    $("lbl_email").textContent = T.emailLabel;
+    $("claim").textContent = T.reserve;
+    $("ics").textContent = T.addToCal;
+    $("openItem").textContent = T.open;
   }
 
   function showReserved(){
-    reserved = true; $('claimBox').classList.add('hid');
-    const n=$('status').querySelector('span'); n.textContent=T.reserved;
-    $('status').className='pill bad'; $('timer').textContent=T.reserved.toUpperCase();
+    reserved = true; $("claimBox").classList.add('hid');
+    const n=$("status").querySelector('span'); n.textContent=T.reserved;
+    $("status").className='pill bad'; $("timer").textContent=T.reserved.toUpperCase();
     if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
   }
   function showSoldOut(){
-    reserved = true; $('claimBox').classList.add('hid');
-    const n=$('status').querySelector('span'); n.textContent=T.soldOut;
-    $('status').className='pill bad'; $('timer').textContent=T.soldOut.toUpperCase();
+    reserved = true; $("claimBox").classList.add('hid');
+    const n=$("status").querySelector('span'); n.textContent=T.soldOut;
+    $("status").className='pill bad'; $("timer").textContent=T.soldOut.toUpperCase();
     if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
   }
 
   function hostFrom(url){ try{ return new URL(url).host; } catch(_){ return ''; } }
   function renderItemCard(cfg){
     const hasAny = cfg.item_url || cfg.item_name || cfg.item_image || cfg.vendor;
-    if (!hasAny){ $('itemCard').classList.add('hid'); return; }
-    $('itemCard').classList.remove('hid');
-    $('itemName').textContent = cfg.item_name || (cfg.title || 'Offer');
-    $('itemVendor').textContent = cfg.vendor || ''; $('itemVendor').style.display = cfg.vendor ? 'block':'none';
+    if (!hasAny){ $("itemCard").classList.add('hid'); return; }
+    $("itemCard").classList.remove('hid');
+    $("itemName").textContent = cfg.item_name || (cfg.title || 'Offer');
+    $("itemVendor").textContent = cfg.vendor || ''; $("itemVendor").style.display = cfg.vendor ? 'block':'none';
     const host = cfg.item_url ? hostFrom(cfg.item_url) : '';
-    $('itemHost').textContent = host || ''; $('itemHost').style.display = host ? 'block':'none';
-    if (cfg.item_image){ $('itemImg').src = cfg.item_image; $('itemImg').style.display='block'; } else { $('itemImg').style.display='none'; }
-    $('openItem').onclick = ()=>{ if (cfg.item_url) window.open(cfg.item_url,'_blank'); };
-    $('openItem').style.display = cfg.item_url ? 'block' : 'none';
+    $("itemHost").textContent = host || ''; $("itemHost").style.display = host ? 'block':'none';
+    if (cfg.item_image){ $("itemImg").src = cfg.item_image; $("itemImg").style.display='block'; } else { $("itemImg").style.display='none'; }
+    $("openItem").onclick = ()=>{ if (cfg.item_url) window.open(cfg.item_url,'_blank'); };
+    $("openItem").style.display = cfg.item_url ? 'block' : 'none';
   }
 
   async function enterViewer(cfg){
-    $('setup').classList.add('hid'); $('viewer').classList.remove('hid');
+    $("setup").classList.add('hid'); $("viewer").classList.remove('hid');
     setLang(cfg.lang || 'pl');
+	
+	const mustHave = [];
+	if (!cfg.lockurl) mustHave.push('Lock URL');
+	if (!cfg.license_key) mustHave.push('License key');
+
+	if (mustHave.length){
+	  $("claimBox").classList.add('hid');
+	  const n = $("status").querySelector('span');
+	  n.textContent = 'Unavailable: ' + mustHave.join(' + ');
+	  $("status").className = 'pill bad';
+	  $("timer").textContent = '—';
+	  // Не запускаем poll/tick в таком режиме (опционально)
+	  return;
+	}
+
     reserved=false; if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
 
     renderItemCard(cfg);
-    $('v_title').textContent = cfg.title || 'Offer';
-    $('v_desc').textContent  = cfg.desc || ''; $('v_desc').style.display = cfg.desc ? 'block':'none';
-    $('range').textContent   = fmtRange(cfg.start, cfg.dur, cfg.tz || 'Europe/Warsaw', cfg.lang || 'pl');
+    $("v_title").textContent = cfg.title || 'Offer';
+    $("v_desc").textContent  = cfg.desc || ''; $("v_desc").style.display = cfg.desc ? 'block':'none';
+    $("range").textContent   = fmtRange(cfg.start, cfg.dur, cfg.tz || 'Europe/Warsaw', cfg.lang || 'pl');
 
     const start = new Date(cfg.start).getTime(), end = start + cfg.dur*60000;
     const left=(ms)=>{ const s=Math.max(0, ms/1000|0), h=s/3600|0, m=(s%3600)/60|0, ss=s%60|0; return `${pad(h)}:${pad(m)}:${pad(ss)}`; };
     function tick(){
       if (reserved) return;
-      const t=Date.now(), el=$('status'), sp=el.querySelector('span');
-      if (t<start){ el.className='pill warn'; sp.textContent=T.notStarted; $('timer').textContent=left(start-t); $('claimBox').classList.add('hid'); }
-      else if (t<=end){ el.className='pill ok'; sp.textContent=T.active; $('timer').textContent='-'+left(end-t); $('claimBox').classList.remove('hid'); }
-      else { el.className='pill bad'; sp.textContent=T.ended; $('timer').textContent='00:00:00'; $('claimBox').classList.add('hid'); }
+      const t=Date.now(), el=$("status"), sp=el.querySelector('span');
+      if (t<start){ el.className='pill warn'; sp.textContent=T.notStarted; $("timer").textContent=left(start-t); $("claimBox").classList.add('hid'); }
+      else if (t<=end){ el.className='pill ok'; sp.textContent=T.active; $("timer").textContent='-'+left(end-t); $("claimBox").classList.remove('hid'); }
+      else { el.className='pill bad'; sp.textContent=T.ended; $("timer").textContent='00:00:00'; $("claimBox").classList.add('hid'); }
     }
     tick(); tickId=setInterval(tick,1000);
 
-    function setStock(n){ remaining = n; $('stock').textContent = T.remaining(n); if (n<=0) showSoldOut(); }
+    function setStock(n){ remaining = n; $("stock").textContent = T.remaining(n); if (n<=0) showSoldOut(); }
 
     async function fetchStatus(){
       if (!cfg.lockurl) return setStock(Number(cfg.qty||1));
       try{
-        const r = await fetch(cfg.lockurl + '?token=' + encodeURIComponent(cfg.token));
+		const base = location.href.split('#')[0]; // для host-check на бэке
+		const url  = cfg.lockurl.split('?')[0]
+		  + '?token=' + encodeURIComponent(cfg.token)
+		  + (cfg.license_key ? ('&license_key=' + encodeURIComponent(cfg.license_key)) : '')
+		  + '&base=' + encodeURIComponent(base);
+
+		const r = await fetch(url);
         const j = await r.json();
         if (j.exists){ setStock(j.remaining); if (j.claimed) showSoldOut(); }
         else { setStock(Number(cfg.qty||1)); }
@@ -529,17 +581,18 @@
     }
     await fetchStatus(); pollId = setInterval(fetchStatus, 5000);
 
-    $('claim').onclick = async ()=>{
-      const phone = $('phone').value.trim();
-      const email = $('email').value.trim();
+    $("claim").onclick = async ()=>{
+      const phone = $("phone").value.trim();
+      const email = $("email").value.trim();
       if (!phone){ alert(T.enterPhone); return; }
       if (!email){ alert(T.enterEmail); return; }
-      $('claim').disabled = true;
+      $("claim").disabled = true;
 
-      const t=Date.now(); if (t<start || t>end){ $('claim').disabled=false; return; }
+      const t=Date.now(); if (t<start || t>end){ $("claim").disabled=false; return; }
 
       if (cfg.lockurl){
         try{
+		  const base = location.href.split('#')[0];
           const r = await fetch(cfg.lockurl, { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
               token: cfg.token, phone, email,
@@ -548,7 +601,9 @@
               qty: cfg.qty, lang: cfg.lang,
               item_name: cfg.item_name, item_url: cfg.item_url,
               item_image: cfg.item_image, vendor: cfg.vendor,
-              seller_email: cfg.seller_email
+              seller_email: cfg.seller_email,
+			  license_key: cfg.license_key,
+			  base: base
             })
           });
           if (r.status===409){ await fetchStatus(); return; }
@@ -556,15 +611,15 @@
           if (j.ok){
             setStock(j.remaining ?? Math.max(0,(remaining||1)-1));
             if ((j.remaining ?? 0) <= 0) showSoldOut(); else showReserved();
-          } else { alert('Error'); $('claim').disabled=false; }
-        }catch{ alert('Network error'); $('claim').disabled=false; }
+          } else { alert('Error'); $("claim").disabled=false; }
+        }catch{ alert('Network error'); $("claim").disabled=false; }
       } else {
         const left = Math.max(0, (remaining ?? Number(cfg.qty||1)) - 1);
         setStock(left); if (left <= 0) showSoldOut(); else showReserved();
       }
     };
 
-    $('ics').onclick = ()=>{
+    $("ics").onclick = ()=>{
       const href = makeICS({ title: cfg.title, desc: cfg.desc, startISO: cfg.start, dur: cfg.dur });
       const a=document.createElement('a'); a.href=href; a.download='flashoffer.ics'; a.click();
       setTimeout(()=>URL.revokeObjectURL(href),1000);
