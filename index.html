@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>FlashOffer · Countdown</title>
+<meta name="theme-color" content="#000000" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /*
+    Black & Red Digital Style (Matrix Green Version)
+    Based on user's technical specification.
+  */
+  :root {
+    --bg: #000000; /* Pure Black */
+    --text: #00FF00; /* Matrix Green */
+    --border: #00FF00;
+    --inactive-border: #003300; /* Dark Green for inactive elements */
+    --glow-color: rgba(0, 255, 0, 0.4);
+    --glow-color-strong: rgba(0, 255, 0, 0.6);
+    --timer-text: #ff0000; /* Bright Red for timer */
+  }
+
+  /* General Styles */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Roboto Mono', monospace;
+    text-shadow: 0 0 1px var(--glow-color);
+  }
+  ::selection {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  /* Layout */
+  .wrap {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* Card */
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--bg);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--inactive-border);
+    box-shadow: 0 0 20px var(--glow-color), inset 0 0 15px rgba(0,255,0,0.1);
+  }
+
+  /* Typography */
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  label {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.8;
+    display: block;
+    margin: 0 0 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .mut {
+    color: var(--text);
+    opacity: 0.6;
+    font-size: 12px;
+  }
+
+  /* Forms */
+  input, select, button {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'Roboto Mono', monospace;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 5px var(--glow-color);
+  }
+  input::placeholder {
+    color: var(--text);
+    opacity: 0.4;
+  }
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2300FF00' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--text);
+    box-shadow: 0 0 10px var(--glow-color-strong);
+  }
+
+  /* Buttons */
+  .btn, button {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .btn:hover:not(:disabled), button:hover:not(:disabled) {
+    background: var(--text);
+    color: var(--bg);
+    text-shadow: none;
+    box-shadow: 0 0 15px var(--glow-color-strong);
+  }
+  .btn:disabled, button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .btn.inline {
+    padding: 10px 12px;
+    width: auto;
+  }
+
+  /* Structure */
+  .row { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 16px 0; }
+  .line { height: 1px; background: var(--inactive-border); margin: 20px 0; border: 0; }
+  .stack { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .center { text-align: center; }
+  .hid { display: none; }
+
+  /* Pills / Status */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    border: 1px solid var(--inactive-border);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .ok {
+    border-color: var(--border);
+    box-shadow: 0 0 5px var(--glow-color);
+  }
+  .bad {
+    border-color: var(--inactive-border);
+    color: var(--text);
+    opacity: 0.6;
+  }
+  .warn {
+    border-color: var(--border);
+    opacity: 0.8;
+  }
+
+  /* THE TIMER */
+  .timer {
+    font-family: 'Orbitron', sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    font-size: clamp(3rem, 15vw, 5rem); /* Responsive font size */
+    font-weight: 900;
+    margin: 16px 0 12px;
+    text-align: center;
+    line-height: 1;
+    color: var(--timer-text);
+    text-shadow:
+      0 0 2px rgba(255,0,0,0.8),
+      0 0 8px rgba(255,0,0,0.6),
+      0 0 16px rgba(255,0,0,0.5),
+      0 0 32px rgba(255,0,0,0.4);
+  }
+
+  /* Viewer specific */
+  .title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  #viewer .title { text-align: center; text-transform: uppercase; letter-spacing: 1px;}
+  #v_desc {
+    text-align: center;
+    opacity: 0.8;
+    margin-top: 4px;
+    font-size: 14px;
+  }
+  #itemCard {
+    background: rgba(0,255,0,0.05);
+    border: 1px solid var(--inactive-border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  #itemCard img {
+    border: 1px solid var(--inactive-border);
+  }
+</style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+<div class="wrap">
+  <!-- SETUP (creator) -->
+  <div class="card" id="setup">
+    <h1>FlashOffer · Create</h1>
+    <div class="row">
+      <div><label>Title</label><input id="title" placeholder="Promotion / Slot" value="Special Offer" /></div>
+      <div><label>Description (optional)</label><input id="desc" placeholder="Short info for the customer" /></div>
+      <div class="row">
+        <div><label>Product/Service Name</label><input id="item_name" placeholder="e.g., Andis Pro Clipper" /></div>
+        <div><label>Product/Service Link (URL)</label><input id="item_url" placeholder="https://..." /></div>
+      </div>
+      <div class="row">
+        <div><label>Image (URL, optional)</label><input id="item_image" placeholder="https://...jpg" /></div>
+        <div><label>Vendor/Brand</label><input id="vendor" placeholder="Cut or Die" /></div>
+      </div>
+      <div><label>Start (local device time)</label><input id="start" type="datetime-local" /></div>
+      <div class="row">
+        <div><label>Duration (min)</label><input id="dur" type="number" min="5" step="5" value="30" /></div>
+        <div>
+          <label>Timezone</label>
+          <select id="tz">
+            <option>Europe/Warsaw</option><option>Europe/Berlin</option>
+            <option>Europe/Paris</option><option>Europe/London</option>
+            <option>Europe/Madrid</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Quantity</label><input id="qty" type="number" min="1" step="1" value="1" /></div>
+        <div>
+          <label>Language</label>
+          <select id="lang">
+            <option value="pl">Polski</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+      </div>
+      <div><label>Seller E-mail (notifications)</label><input id="seller_email" type="email" placeholder="owner@example.com" /></div>
+      <div><label>Lock URL (Apps Script)</label><input id="lockurl" placeholder="https://script.google.com/macros/s/XXXX/exec" /></div>
+    </div>
+    <div class="stack">
+      <button class="btn" id="gen">Generate Link</button>
+      <button class="btn inline" id="preview">Preview</button>
+    </div>
+    <div id="out" class="hid">
+      <div class="line"></div>
+      <div class="row"><div><label>Shareable Link</label><input id="link" readonly /></div></div>
+      <div class="stack">
+        <button class="btn inline" id="copy">Copy</button>
+        <button class="btn inline" id="open">Open</button>
+      </div>
+      <div class="mut" style="margin-top:8px">Config is encrypted in <b>#hash</b>. Open/host via HTTPS (e.g., GitHub Pages).</div>
+    </div>
+  </div>
+
+  <!-- VIEWER (client) -->
+  <div class="card hid" id="viewer">
+    <!-- item card -->
+    <div id="itemCard" class="hid" style="display:flex; gap:12px; align-items:center; margin-bottom:12px">
+      <img id="itemImg" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:12px;" />
+      <div style="flex:1 1 auto;min-width:0">
+        <div id="itemName" class="title" style="margin:0"></div>
+        <div id="itemVendor" class="mut" style="font-size:12px"></div>
+        <div id="itemHost" class="mut" style="font-size:12px"></div>
+      </div>
+      <button id="openItem" class="btn inline">Open</button>
+    </div>
+
+    <div class="title" id="v_title">Offer</div>
+    <div class="mut" id="v_desc"></div>
+
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="stack" style="justify-content:center; gap: 16px;">
+      <div class="pill warn" id="status"><span>Not Started Yet</span></div>
+      <div class="pill" id="stock"></div>
+    </div>
+     <div class="center mut" id="range" style="margin-top: 12px; font-size: 12px;"></div>
+
+
+    <div class="row" id="claimBox" style="margin-top:14px">
+      <div><label id="lbl_phone">Your phone number</label><input id="phone" inputmode="tel" placeholder="+48 ..." /></div>
+      <div><label id="lbl_email">Your e-mail (confirmation)</label><input id="email" type="email" placeholder="you@example.com" /></div>
+      <button class="btn" id="claim">Reserve</button>
+    </div>
+
+    <div class="row"><button class="btn" id="ics">Add to Calendar (.ics)</button></div>
+  </div>
+</div>
+
+<script>
+  // ---------- i18n ----------
+  const I18N = {
+    pl: {
+      notStarted: 'Jeszcze nie rozpoczęta',
+      active: 'Aktywna',
+      ended: 'Zakończona',
+      reserved: 'Zarezerwowana',
+      soldOut: 'Wyprzedane',
+      remaining: (n)=> `Pozostało: ${n}`,
+      phoneLabel: 'Twój numer telefonu',
+      emailLabel: 'Twój e-mail (potwierdzenie)',
+      reserve: 'Rezerwuj',
+      addToCal: 'Dodaj do kalendarza (.ics)',
+      enterPhone: 'Podaj numer telefonu',
+      enterEmail: 'Podaj e-mail',
+      open: 'Otwórz'
+    },
+    en: {
+      notStarted: 'Not started yet',
+      active: 'Active',
+      ended: 'Ended',
+      reserved: 'Reserved',
+      soldOut: 'Sold out',
+      remaining: (n)=> `Remaining: ${n}`,
+      phoneLabel: 'Your phone number',
+      emailLabel: 'Your e-mail (confirmation)',
+      reserve: 'Reserve',
+      addToCal: 'Add to calendar (.ics)',
+      enterPhone: 'Enter phone number',
+      enterEmail: 'Enter e-mail',
+      open: 'Open'
+    },
+    de: {
+      notStarted: 'Noch nicht gestartet',
+      active: 'Aktiv',
+      ended: 'Beendet',
+      reserved: 'Reserviert',
+      soldOut: 'Ausverkauft',
+      remaining: (n)=> `Verfügbar: ${n}`,
+      phoneLabel: 'Ihre Telefonnummer',
+      emailLabel: 'Ihre E-Mail (Bestätigung)',
+      reserve: 'Reservieren',
+      addToCal: 'Zum Kalender hinzufügen (.ics)',
+      enterPhone: 'Telefonnummer eingeben',
+      enterEmail: 'E-Mail eingeben',
+      open: 'Öffnen'
+    },
+    fr: {
+      notStarted: 'Pas encore commencé',
+      active: 'Actif',
+      ended: 'Terminé',
+      reserved: 'Réservé',
+      soldOut: 'Épuisé',
+      remaining: (n)=> `Restant : ${n}`,
+      phoneLabel: 'Votre téléphone',
+      emailLabel: 'Votre e-mail (confirmation)',
+      reserve: 'Réserver',
+      addToCal: 'Ajouter au calendrier (.ics)',
+      enterPhone: 'Entrez le téléphone',
+      enterEmail: 'Entrez l’e-mail',
+      open: 'Ouvrir'
+    },
+    es: {
+      notStarted: 'Aún no comienza',
+      active: 'Activo',
+      ended: 'Finalizado',
+      reserved: 'Reservado',
+      soldOut: 'Agotado',
+      remaining: (n)=> `Disponible: ${n}`,
+      phoneLabel: 'Tu teléfono',
+      emailLabel: 'Tu e-mail (confirmación)',
+      reserve: 'Reservar',
+      addToCal: 'Añadir al calendario (.ics)',
+      enterPhone: 'Introduce el teléfono',
+      enterEmail: 'Introduce el e-mail',
+      open: 'Abrir'
+    }
+  };
+
+  // ---------- utils ----------
+  const $ = (id)=>document.getElementById(id);
+  const pad=(n)=>String(n).padStart(2,'0');
+  const b64u = (s)=> btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const ub64 = (s)=> decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/'))));
+  const makeHash = (cfg)=> 'fsl=' + b64u(JSON.stringify(cfg));
+  const parseHash = ()=>{ const m=/^#fsl=([\w\-_=]+)$/.exec(location.hash); if(!m) return null; try{return JSON.parse(ub64(m[1]));}catch{return null;} };
+  const toLocalISO=(dt)=>{ const d=new Date(dt), off=d.getTimezoneOffset()*60000; return new Date(d-off).toISOString().slice(0,16); };
+  const fmtRange=(startISO, durMin, tz, lang)=>{ const t0=new Date(startISO), t1=new Date(t0.getTime()+durMin*60000);
+    const fmt=new Intl.DateTimeFormat((lang||'pl')+'-'+(lang||'PL').toUpperCase(),{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `${fmt.format(t0)} → ${fmt.format(t1)} (${tz})`; };
+  const makeICS=({title,desc,startISO,dur})=>{ const t0=new Date(startISO), t1=new Date(t0.getTime()+dur*60000);
+    const z=(d)=>`${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+    const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FlashOffer//EN','BEGIN:VEVENT',`UID:${Date.now()}@flashoffer`,`DTSTAMP:${z(new Date)}`,`DTSTART:${z(t0)}`,`DTEND:${z(t1)}`,
+      `SUMMARY:${(title||'Offer').replace(/\n/g,' ')}`,...(desc?[`DESCRIPTION:${desc.replace(/\n/g,' ')}`]:[]),'END:VEVENT','END:VCALENDAR'].join('\r\n');
+    const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar'})); return url; };
+
+  // ---------- setup ----------
+  function enterSetup(){
+    $('viewer').classList.add('hid'); $('setup').classList.remove('hid');
+    const last = JSON.parse(localStorage.getItem('flashoffer:last')||'null') || {};
+    $('title').value = last.title || 'Special Offer';
+    $('desc').value  = last.desc  || '';
+    $('item_name').value  = last.item_name || '';
+    $('item_url').value   = last.item_url  || '';
+    $('item_image').value = last.item_image|| '';
+    $('vendor').value     = last.vendor    || '';
+    $('start').value = last.start ? toLocalISO(last.start) : toLocalISO(Date.now()+15*60000);
+    $('dur').value   = last.dur   || 30;
+    $('tz').value    = last.tz    || 'Europe/Warsaw';
+    $('qty').value   = last.qty   || 1;
+    $('lang').value  = last.lang  || 'pl';
+    $('seller_email').value = last.seller_email || '';
+    $('lockurl').value = last.lockurl || '';
+
+    $('gen').onclick = ()=>{
+      const cfg = readCfg(); const url = location.href.split('#')[0] + '#' + makeHash(cfg);
+      $('link').value = url; $('out').classList.remove('hid');
+      localStorage.setItem('flashoffer:last', JSON.stringify(cfg));
+    };
+    $('preview').onclick = ()=>{
+      const cfg = readCfg(); localStorage.setItem('flashoffer:last', JSON.stringify(cfg));
+      location.hash = makeHash(cfg); render();
+    };
+    $('copy').onclick = async ()=>{ try{ await navigator.clipboard.writeText($('link').value); }catch{ $('link').select(); } };
+    $('open').onclick = ()=> window.open($('link').value,'_blank');
+
+    function readCfg(){
+      return {
+        title: $('title').value.trim(),
+        desc:  $('desc').value.trim(),
+        item_name:  $('item_name').value.trim(),
+        item_url:   $('item_url').value.trim(),
+        item_image: $('item_image').value.trim(),
+        vendor:     $('vendor').value.trim(),
+        start: new Date($('start').value).toISOString(),
+        dur:   Math.max(5, parseInt($('dur').value,10)||30),
+        tz:    $('tz').value,
+        qty:   Math.max(1, parseInt($('qty').value,10)||1),
+        lang:  $('lang').value,
+        seller_email: $('seller_email').value.trim(),
+        lockurl: $('lockurl').value.trim(),
+        token: crypto.getRandomValues(new Uint8Array(8)).reduce((s,b)=>s+('0'+b.toString(16)).slice(-2),'')
+      };
+    }
+  }
+
+  // ---------- viewer ----------
+  let tickId=null, pollId=null, reserved=false, remaining=null, T=I18N.pl;
+
+  function setLang(lang){
+    T = I18N[lang] || I18N.pl;
+    $('lbl_phone').textContent = T.phoneLabel;
+    $('lbl_email').textContent = T.emailLabel;
+    $('claim').textContent = T.reserve;
+    $('ics').textContent = T.addToCal;
+    $('openItem').textContent = T.open;
+  }
+
+  function showReserved(){
+    reserved = true; $('claimBox').classList.add('hid');
+    const n=$('status').querySelector('span'); n.textContent=T.reserved;
+    $('status').className='pill bad'; $('timer').textContent=T.reserved.toUpperCase();
+    if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
+  }
+  function showSoldOut(){
+    reserved = true; $('claimBox').classList.add('hid');
+    const n=$('status').querySelector('span'); n.textContent=T.soldOut;
+    $('status').className='pill bad'; $('timer').textContent=T.soldOut.toUpperCase();
+    if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
+  }
+
+  function hostFrom(url){ try{ return new URL(url).host; } catch(_){ return ''; } }
+  function renderItemCard(cfg){
+    const hasAny = cfg.item_url || cfg.item_name || cfg.item_image || cfg.vendor;
+    if (!hasAny){ $('itemCard').classList.add('hid'); return; }
+    $('itemCard').classList.remove('hid');
+    $('itemName').textContent = cfg.item_name || (cfg.title || 'Offer');
+    $('itemVendor').textContent = cfg.vendor || ''; $('itemVendor').style.display = cfg.vendor ? 'block':'none';
+    const host = cfg.item_url ? hostFrom(cfg.item_url) : '';
+    $('itemHost').textContent = host || ''; $('itemHost').style.display = host ? 'block':'none';
+    if (cfg.item_image){ $('itemImg').src = cfg.item_image; $('itemImg').style.display='block'; } else { $('itemImg').style.display='none'; }
+    $('openItem').onclick = ()=>{ if (cfg.item_url) window.open(cfg.item_url,'_blank'); };
+    $('openItem').style.display = cfg.item_url ? 'block' : 'none';
+  }
+
+  async function enterViewer(cfg){
+    $('setup').classList.add('hid'); $('viewer').classList.remove('hid');
+    setLang(cfg.lang || 'pl');
+    reserved=false; if (tickId) clearInterval(tickId); if (pollId) clearInterval(pollId);
+
+    renderItemCard(cfg);
+    $('v_title').textContent = cfg.title || 'Offer';
+    $('v_desc').textContent  = cfg.desc || ''; $('v_desc').style.display = cfg.desc ? 'block':'none';
+    $('range').textContent   = fmtRange(cfg.start, cfg.dur, cfg.tz || 'Europe/Warsaw', cfg.lang || 'pl');
+
+    const start = new Date(cfg.start).getTime(), end = start + cfg.dur*60000;
+    const left=(ms)=>{ const s=Math.max(0, ms/1000|0), h=s/3600|0, m=(s%3600)/60|0, ss=s%60|0; return `${pad(h)}:${pad(m)}:${pad(ss)}`; };
+    function tick(){
+      if (reserved) return;
+      const t=Date.now(), el=$('status'), sp=el.querySelector('span');
+      if (t<start){ el.className='pill warn'; sp.textContent=T.notStarted; $('timer').textContent=left(start-t); $('claimBox').classList.add('hid'); }
+      else if (t<=end){ el.className='pill ok'; sp.textContent=T.active; $('timer').textContent='-'+left(end-t); $('claimBox').classList.remove('hid'); }
+      else { el.className='pill bad'; sp.textContent=T.ended; $('timer').textContent='00:00:00'; $('claimBox').classList.add('hid'); }
+    }
+    tick(); tickId=setInterval(tick,1000);
+
+    function setStock(n){ remaining = n; $('stock').textContent = T.remaining(n); if (n<=0) showSoldOut(); }
+
+    async function fetchStatus(){
+      if (!cfg.lockurl) return setStock(Number(cfg.qty||1));
+      try{
+        const r = await fetch(cfg.lockurl + '?token=' + encodeURIComponent(cfg.token));
+        const j = await r.json();
+        if (j.exists){ setStock(j.remaining); if (j.claimed) showSoldOut(); }
+        else { setStock(Number(cfg.qty||1)); }
+      }catch{ setStock(Number(cfg.qty||1)); }
+    }
+    await fetchStatus(); pollId = setInterval(fetchStatus, 5000);
+
+    $('claim').onclick = async ()=>{
+      const phone = $('phone').value.trim();
+      const email = $('email').value.trim();
+      if (!phone){ alert(T.enterPhone); return; }
+      if (!email){ alert(T.enterEmail); return; }
+      $('claim').disabled = true;
+
+      const t=Date.now(); if (t<start || t>end){ $('claim').disabled=false; return; }
+
+      if (cfg.lockurl){
+        try{
+          const r = await fetch(cfg.lockurl, { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              token: cfg.token, phone, email,
+              title: cfg.title, desc: cfg.desc,
+              startISO: cfg.start, dur: cfg.dur, tz: cfg.tz,
+              qty: cfg.qty, lang: cfg.lang,
+              item_name: cfg.item_name, item_url: cfg.item_url,
+              item_image: cfg.item_image, vendor: cfg.vendor,
+              seller_email: cfg.seller_email
+            })
+          });
+          if (r.status===409){ await fetchStatus(); return; }
+          const j = await r.json();
+          if (j.ok){
+            setStock(j.remaining ?? Math.max(0,(remaining||1)-1));
+            if ((j.remaining ?? 0) <= 0) showSoldOut(); else showReserved();
+          } else { alert('Error'); $('claim').disabled=false; }
+        }catch{ alert('Network error'); $('claim').disabled=false; }
+      } else {
+        const left = Math.max(0, (remaining ?? Number(cfg.qty||1)) - 1);
+        setStock(left); if (left <= 0) showSoldOut(); else showReserved();
+      }
+    };
+
+    $('ics').onclick = ()=>{
+      const href = makeICS({ title: cfg.title, desc: cfg.desc, startISO: cfg.start, dur: cfg.dur });
+      const a=document.createElement('a'); a.href=href; a.download='flashoffer.ics'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(href),1000);
+    };
+  }
+
+  // ---------- boot ----------
+  function render(){
+    const cfg = parseHash();
+    if (cfg && cfg.start && cfg.dur && cfg.token) enterViewer(cfg);
+    else enterSetup();
+  }
+  render(); window.addEventListener('hashchange', render);
+</script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
