@@ -319,7 +319,7 @@
 </div>
 
 <script>
-  const EXEC_URL = <?= JSON.stringify(execUrl) ?>;
+  const EXEC_URL = (<?= JSON.stringify(execUrl) ?>) || (location.origin + location.pathname.replace(/\/dev$/, '/exec'));
   // ---------- i18n ----------
   const I18N = {
     pl: {
