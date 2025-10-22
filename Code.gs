@@ -113,7 +113,6 @@ function doGet(e){
 
 function _renderApp(){
   const tpl=HtmlService.createTemplateFromFile('app');
-  tpl.execUrl=ScriptApp.getService().getUrl();
   return tpl.evaluate()
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setTitle('FlashOffer');
