@@ -1,4 +1,4 @@
-const CACHE = 'flashoffer-v1';
+const CACHE = 'flashoffer-v2';
 const RELATIVE_ASSETS = [
   './index.html',
   './offer.html',

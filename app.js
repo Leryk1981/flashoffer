@@ -485,24 +485,24 @@ export const initOfferPage = async () => {
     if (apiStatusUrl) {
       apiStatusUrl.search = params.toString();
       targets.push(apiStatusUrl);
-    }
-
-    if (cfg.lockurl) {
-      try {
-        const direct = new URL(cfg.lockurl, window.location.href);
-        direct.search = params.toString();
-        direct.hash = '';
-        targets.push(direct);
-      } catch (_err) {
-        /* ignore */
+    } else {
+      if (cfg.lockurl) {
+        try {
+          const direct = new URL(cfg.lockurl, window.location.href);
+          direct.search = params.toString();
+          direct.hash = '';
+          targets.push(direct);
+        } catch (_err) {
+          /* ignore */
+        }
       }
-    }
 
-    if (gasFallback && (!cfg.lockurl || cfg.lockurl === CONFIG.GAS_EXEC_FALLBACK)) {
-      const fallbackUrl = new URL(gasFallback.toString());
-      fallbackUrl.search = params.toString();
-      fallbackUrl.hash = '';
-      targets.push(fallbackUrl);
+      if (gasFallback && (!cfg.lockurl || cfg.lockurl === CONFIG.GAS_EXEC_FALLBACK)) {
+        const fallbackUrl = new URL(gasFallback.toString());
+        fallbackUrl.search = params.toString();
+        fallbackUrl.hash = '';
+        targets.push(fallbackUrl);
+      }
     }
 
     for (const target of targets) {
@@ -555,19 +555,19 @@ export const initOfferPage = async () => {
     const apiClaimUrl = resolveEndpoint(apiBase, 'claim');
     if (apiClaimUrl) {
       targets.push({ url: apiClaimUrl.toString(), method: 'POST' });
-    }
-
-    if (cfg.lockurl) {
-      try {
-        const direct = new URL(cfg.lockurl, window.location.href);
-        targets.push({ url: direct.toString(), method: 'POST' });
-      } catch (_err) {
-        /* ignore */
+    } else {
+      if (cfg.lockurl) {
+        try {
+          const direct = new URL(cfg.lockurl, window.location.href);
+          targets.push({ url: direct.toString(), method: 'POST' });
+        } catch (_err) {
+          /* ignore */
+        }
       }
-    }
 
-    if (gasFallback && (!cfg.lockurl || cfg.lockurl === CONFIG.GAS_EXEC_FALLBACK)) {
-      targets.push({ url: gasFallback.toString(), method: 'POST' });
+      if (gasFallback && (!cfg.lockurl || cfg.lockurl === CONFIG.GAS_EXEC_FALLBACK)) {
+        targets.push({ url: gasFallback.toString(), method: 'POST' });
+      }
     }
 
     for (const target of targets) {
