@@ -43,25 +43,10 @@ function _claimsSheet(ssOpt){
 }
 
 /* ====== UTILS ====== */
-function _corsHeaders(out, origin){
-  const allow = origin || '*';
-  const headers={
-    'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  };
-  if(typeof out.setHeaders==='function'){
-    out.setHeaders(headers);
-  }else if(typeof out.setHeader==='function'){
-    Object.keys(headers).forEach(k=>out.setHeader(k, headers[k]));
-  }
-  return out;
-}
-function _json(obj, code, origin){
-  const out = ContentService.createTextOutput(JSON.stringify(obj))
+function _json(obj, code){
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON)
     .setResponseCode(code||200);
-  return _corsHeaders(out, origin);
 }
 function _escapeHtml(s){return String(s||'').replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
 function _code(n=8){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<n;i++) s+=a[(Math.random()*a.length)|0];return s;}
@@ -69,7 +54,6 @@ function _qrUrl(t){return 'https://api.qrserver.com/v1/create-qr-code/?size=200x
 function _fmtDate(iso,tz){try{const d=new Date(iso);return Utilities.formatDate(d, tz||Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');}catch(_){return iso||'';}}
 function _parseFsl(fsl){try{const b64=String(fsl||'').replace(/-/g,'+').replace(/_/g,'/');const raw=Utilities.base64Decode(b64);return JSON.parse(Utilities.newBlob(raw).getDataAsString());}catch(_){return {};}}
 function hostFromUrl_(u){try{return new URL(u).host;}catch(_){return'';}}
-function originFromUrl_(u){try{return new URL(u).origin;}catch(_){return'*';}}
 function _debugLog(m){try{_sheet(SHEET_LOGS,['ts','msg']).appendRow([new Date(), String(m)]);}catch(_){}}
 
 /* ====== LICENSES ====== */
@@ -105,13 +89,9 @@ function createLicense(owner_email, allowed_domains, quota_total){
 function doGet(e){
   try{
     const p=(e&&e.parameter)?e.parameter:{};
-    const origin=originFromUrl_((p.base||'').trim());
 
-    // UI: открываем встроенную страницу (без CORS)
-    if(String(p.ui||'')==='1'){
-      return HtmlService.createHtmlOutput(_UI_HTML())
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .setTitle('FlashOffer');
+    if(String(p.ui||'')==='1' || (!p.token && !p.share && !p.ping)){
+      return _renderApp();
     }
 
     if(String(p.ping||'')==='1'){ _getSpreadsheet(); return _json({ok:true,pong:true}); }
@@ -120,10 +100,10 @@ function doGet(e){
 
     if(p.token){
       const lic=_checkLicense((p.license_key||'').trim(), hostFromUrl_((p.base||'').trim()));
-      if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code, origin);
-      return _status(e, origin);
+      if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code);
+      return _status(e);
     }
-    return _json({ok:false,error:'bad_request'},400, origin);
+    return _json({ok:false,error:'bad_request'},400);
 
   }catch(err){
     _debugLog('doGet exception: '+(err&&err.stack||err));
@@ -131,16 +111,24 @@ function doGet(e){
   }
 }
 
+function _renderApp(){
+  const tpl=HtmlService.createTemplateFromFile('app');
+  tpl.execUrl=ScriptApp.getService().getUrl();
+  return tpl.evaluate()
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .setTitle('FlashOffer');
+}
+
 /* ====== STATUS (GET) ====== */
-function _status(e, origin){
-  const token=(e.parameter.token||'').trim(); if(!token) return _json({ok:false,error:'bad_request'},400,origin);
+function _status(e){
+  const token=(e.parameter.token||'').trim(); if(!token) return _json({ok:false,error:'bad_request'},400);
   const sh=_sheet(SHEET_OFFERS,['token','title','desc','startISO','dur_min','tz','qty_total','qty_claimed','createdAt','lang','item_name','item_url','item_image','vendor','seller_email']);
   const data=sh.getDataRange().getValues();
   const row=data.find((r,i)=>i>0&&r[0]===token);
-  if(!row) return _json({ok:true,exists:false,claimed:false,remaining:null},200,origin);
+  if(!row) return _json({ok:true,exists:false,claimed:false,remaining:null},200);
   const qtyTotal=Number(row[6]||0), qtyClaim=Number(row[7]||0);
   const remaining=Math.max(0, qtyTotal-qtyClaim), claimed=remaining===0;
-  return _json({ok:true,exists:true,claimed,remaining,qty_total:qtyTotal,qty_claimed:qtyClaim},200,origin);
+  return _json({ok:true,exists:true,claimed,remaining,qty_total:qtyTotal,qty_claimed:qtyClaim},200);
 }
 
 /* ====== SHARE (OG + redirect) ====== */
@@ -176,9 +164,9 @@ function _shareLanding(e){
 }
 
 function doOptions(e){
-  const out = ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT).setResponseCode(204);
-  const origin = e && e.parameter ? originFromUrl_((e.parameter.base||'').trim()) : '*';
-  return _corsHeaders(out, origin);
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setResponseCode(204);
 }
 
 /* ====== CLAIM (POST) ====== */
@@ -186,11 +174,10 @@ function doPost(e){
   try{
     let b={}; try{ b=JSON.parse(e.postData.contents||'{}'); }catch(_){}
     const token=(b.token||'').trim(), email=(b.email||'').trim(), license_key=(b.license_key||'').trim();
-    const baseOrigin=originFromUrl_((b.base||'').trim());
-    if(!token||!email||!license_key) return _json({ok:false,error:'bad_request'},400,baseOrigin);
+    if(!token||!email||!license_key) return _json({ok:false,error:'bad_request'},400);
 
     const lic=_checkLicense(license_key, hostFromUrl_((b.base||'').trim()));
-    if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code, baseOrigin);
+    if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code);
 
     const lock=LockService.getScriptLock(); lock.tryLock(5000);
     try{
@@ -204,7 +191,7 @@ function doPost(e){
         idx=shO.getLastRow()-1; row=shO.getRange(idx+1,1,1,15).getValues()[0];
       }else{ row=shO.getRange(idx+1,1,1,15).getValues()[0]; }
       const qtyTotal=Number(row[6]||0), qtyClaim=Number(row[7]||0);
-      if(Math.max(0,qtyTotal-qtyClaim)<=0) return _json({ok:false,error:'conflict',remaining:0},409,baseOrigin);
+      if(Math.max(0,qtyTotal-qtyClaim)<=0) return _json({ok:false,error:'conflict',remaining:0},409);
 
       const code=_code(8);
       shC.appendRow([token,email,code,new Date(),(b.lang||row[9]||'pl')]);
@@ -245,119 +232,13 @@ function doPost(e){
       }
 
       _incLicenseQuota(lic);
-      return _json({ok:true,remaining:left},200,baseOrigin);
+      return _json({ok:true,remaining:left},200);
 
     }finally{ try{lock.releaseLock();}catch(_){}} 
   }catch(err){
     _debugLog('doPost exception: '+(err&&err.stack||err));
     return _json({ok:false,error:'exception: '+(err&&err.message||String(err))},500);
   }
-}
-
-/* ====== Built-in minimal UI (no CORS) ======
-   Открывай:  https://script.google.com/macros/s/…/exec?ui=1#fsl=<...>
-*/
-function _UI_HTML(){
-  const exec = ScriptApp.getService().getUrl();
-  return `
-<!doctype html><html lang="en"><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>FlashOffer</title>
-<style>
-  body{font-family:system-ui,Segoe UI,Roboto,sans-serif;margin:0;background:#0b0d10;color:#eef}
-  .wrap{max-width:420px;margin:0 auto;padding:16px}
-  .card{background:#151a21;border:1px solid #232a33;border-radius:14px;padding:16px}
-  h1{font-size:18px;margin:0 0 8px}
-  .mut{color:#9aa3ad;font-size:13px}
-  .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px}
-  .good{background:#133a1c;color:#b3e6c1;border:1px solid #1c6a2b}
-  .bad{background:#3a1313;color:#f0b1b1;border:1px solid #6a1c1c}
-  input,button{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2b3340;background:#0f1318;color:#eef}
-  button{background:#2a62ff;border-color:#3969ff;cursor:pointer}
-  button:disabled{opacity:.6;cursor:not-allowed}
-  .row{display:flex;gap:8px}
-  .row>*{flex:1}
-  .timer{font-variant-numeric:tabular-nums;font-size:28px;margin:8px 0 0}
-  .stock{font-size:14px;margin-top:6px;color:#c9d3de}
-  .sp{height:8px}
-</style>
-<div class="wrap">
-  <div class="card" id="box">
-    <h1 id="t">Offer</h1>
-    <div class="mut" id="d"></div>
-    <div class="pill good" id="status"><span>Available</span></div>
-    <div class="timer" id="timer">--:--:--</div>
-    <div class="stock" id="stock"></div>
-    <div class="sp"></div>
-    <div id="claimBox">
-    <input id="email" placeholder="you@example.com"/>
-    <div class="sp"></div>
-    <button id="claim">Reserve</button>
-    </div>
-  </div>
-</div>
-<script>
-const $=id=>document.getElementById(id);
-function dec(b64){b64=b64.replace(/-/g,'+').replace(/_/g,'/');try{return JSON.parse(atob(b64));}catch(e){return{}}}
-const hash=location.hash.replace(/^#fsl=/,''); const cfg=dec(hash);
-let left = cfg.qty||null;
-
-$('t').textContent = (cfg.item_name||cfg.title||'Offer') + (cfg.vendor?(' · '+cfg.vendor):'');
-$('d').textContent = (cfg.desc||'').slice(0,180);
-
-const exec='${exec}';
-const base = exec+'?ui=1';
-
-async function fetchStatus(){
-  if(!cfg.lockurl || !cfg.license_key){ $('status').className='pill bad'; $('status').firstElementChild.textContent='Unavailable (lock/license)'; $('claim').disabled=true; return; }
-  const url = exec + '?token=' + encodeURIComponent(cfg.token)
-    + '&license_key=' + encodeURIComponent(cfg.license_key)
-    + '&base=' + encodeURIComponent(base);
-  const res = await fetch(url); const js = await res.json();
-  if(!js.ok){ $('status').className='pill bad'; $('status').firstElementChild.textContent=js.error||'Error'; $('claim').disabled=true; return; }
-  if(js.exists){ left = js.remaining; $('stock').textContent = 'Remaining: ' + left; }
-  $('status').className = js.claimed?'pill bad':'pill good';
-  $('status').firstElementChild.textContent = js.claimed ? 'Sold out' : 'Available';
-  $('claim').disabled = !!js.claimed;
-}
-fetchStatus();
-
-$('claim').onclick=async()=>{
-  const email=$('email').value.trim();
-  const body = {
-    token: cfg.token, email,
-    title: cfg.title, desc: cfg.desc,
-    startISO: cfg.start, dur: cfg.dur, tz: cfg.tz,
-    qty: cfg.qty, lang: cfg.lang,
-    item_name: cfg.item_name, item_url: cfg.item_url,
-    item_image: cfg.item_image, vendor: cfg.vendor,
-    seller_email: cfg.seller_email,
-    license_key: cfg.license_key, base
-  };
-  try{
-    const res=await fetch(exec,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const js=await res.json();
-    if(!res.ok||!js.ok){ alert('Error: '+(js.error||res.statusText)); return; }
-    alert('Reserved! Remaining: '+js.remaining);
-    left = js.remaining; $('stock').textContent='Remaining: '+left; fetchStatus();
-  }catch(e){ alert('Network error: '+e.message); }
-};
-
-function tick(){
-  if(!cfg.start || !cfg.dur){ $('timer').textContent='—'; return; }
-  const start=new Date(cfg.start).getTime(), now=Date.now(), end=start+Number(cfg.dur||0)*60000;
-  let t;
-  if(now<start){ t=start-now; }
-  else if(now<=end){ t=0; }
-  else { t=now-end; }
-  const sign = now<start ? '' : now<=end ? '-' : '+';
-  const h=Math.floor(t/3600000), m=Math.floor((t%3600000)/60000), s=Math.floor((t%60000)/1000);
-  $('timer').textContent=sign+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-  requestAnimationFrame(tick);
-}
-tick();
-</script>
-</html>`;
 }
 
 /* ====== Manual helpers ====== */
