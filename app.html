@@ -426,7 +426,11 @@
     $("qty").value   = last.qty   || 1;
     $("lang").value  = last.lang  || 'pl';
     $("seller_email").value = last.seller_email || '';
-    $("lockurl").value = last.lockurl || EXEC_URL;
+    const defaultLock = EXEC_URL.replace(/\/dev$/, '/exec');
+    const savedLock = (last.lockurl && last.lockurl.startsWith('https://script.google.com/macros/'))
+      ? last.lockurl.replace('/dev','/exec')
+      : defaultLock;
+    $("lockurl").value = savedLock;
 	$("license_key").value = last.license_key || '';
 
     $("gen").onclick = ()=>{
@@ -460,6 +464,11 @@
     $("open").onclick = ()=> window.open($("link").value,'_blank');
 
     function readCfg(){
+      const normalizeLock = (url)=>{
+        const trimmed=(url||'').trim();
+        if(trimmed.startsWith('https://script.google.com/macros/')) return trimmed.replace('/dev','/exec');
+        return defaultLock;
+      };
       return {
         title: $("title").value.trim(),
         desc:  $("desc").value.trim(),
@@ -473,7 +482,7 @@
         qty:   Math.max(1, parseInt($("qty").value,10)||1),
         lang:  $("lang").value,
         seller_email: $("seller_email").value.trim(),
-        lockurl: $("lockurl").value.trim() || EXEC_URL,
+        lockurl: normalizeLock($("lockurl").value),
 		license_key: $("license_key").value.trim(),
         token: crypto.getRandomValues(new Uint8Array(8)).reduce((s,b)=>s+('0'+b.toString(16)).slice(-2),'')
       };
