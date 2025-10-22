@@ -43,7 +43,19 @@ function _claimsSheet(ssOpt){
 }
 
 /* ====== UTILS ====== */
-function _json(obj, code){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON).setResponseCode(code||200); }
+function _corsHeaders(out, origin){
+  const allow = origin || '*';
+  return out
+    .setHeader('Access-Control-Allow-Origin', allow)
+    .setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+function _json(obj, code, origin){
+  const out = ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setResponseCode(code||200);
+  return _corsHeaders(out, origin);
+}
 function _escapeHtml(s){return String(s||'').replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
 function _code(n=8){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<n;i++) s+=a[(Math.random()*a.length)|0];return s;}
 function _qrUrl(t){return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(t);}
@@ -152,6 +164,11 @@ function _shareLanding(e){
     '</body></html>';
 
   return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doOptions(e){
+  const out = ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT).setResponseCode(204);
+  return _corsHeaders(out);
 }
 
 /* ====== CLAIM (POST) ====== */
