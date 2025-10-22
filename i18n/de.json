@@ -1,0 +1,18 @@
+{
+  "notStarted": "Noch nicht gestartet",
+  "active": "Aktiv",
+  "ended": "Beendet",
+  "reserved": "Reserviert",
+  "soldOut": "Ausverkauft",
+  "remaining": "Verfügbar: {n}",
+  "emailLabel": "Ihre E-Mail (Bestätigung)",
+  "reserve": "Reservieren",
+  "addToCal": "Zum Kalender hinzufügen (.ics)",
+  "enterEmail": "E-Mail eingeben",
+  "open": "Öffnen",
+  "unavailable": "Nicht verfügbar: {items}",
+  "offlineReserved": "Reserviert",
+  "offlineSoldOut": "Ausverkauft",
+  "directLinkLabel": "Direkter Link",
+  "shareLinkLabel": "Social Link"
+}

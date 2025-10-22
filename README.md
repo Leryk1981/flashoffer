@@ -1,158 +1,112 @@
-FlashOffer — Universal Discount & Reservation App (No-Backend)
+FlashOffer — Progressive Web App for Limited-Time Deals
+======================================================
 
-FlashOffer is a small, self-contained web app that lets anyone publish limited-time offers or booking slots — without any backend or database.
-It runs entirely in the browser and uses Google Apps Script + Google Sheets as a lightweight backend for storage, locking, and email notifications.
+FlashOffer is a lightweight PWA that lets you publish flash sales or reservation windows without a traditional backend.  
+The UI runs entirely in the browser, while Google Apps Script + Google Sheets handle persistence, locking, and email notifications.
 
-✨ Features
+Key Features
+------------
+- Installable PWA (manifest + service worker) with offline-first UI cache.
+- Countdown viewer with timezone support and quantity tracking.
+- Multi-language interface (PL, EN, DE, FR, ES) loaded from JSON bundles.
+- Google Apps Script backend for locking, confirmation emails, and social previews.
+- Automatic link generator: direct customer link + optional share link for social networks.
 
-🕒 Timed offers with live countdown and timezone support
+Repository Layout
+-----------------
+| Path | Purpose |
+| --- | --- |
+| `index.html` | Offer setup screen (link generator). |
+| `offer.html` | Customer-facing countdown + reservation form. |
+| `app.js` | Shared logic, i18n loader, API helpers, and exported `CONFIG`. |
+| `styles.css` | Reusable styling for both screens. |
+| `manifest.webmanifest` | PWA manifest (name, icons, theme, start URL). |
+| `service-worker.js` | Static asset cache for offline load + navigation fallback. |
+| `icons/` | PWA icons (192px & 512px). |
+| `i18n/*.json` | Language packs for the viewer UI. |
+| `Code.gs` | Google Apps Script backend (status + claim endpoints). |
+| `.github/workflows/pages.yml` | GitHub Pages deployment workflow. |
 
-📦 Quantity tracking (e.g., 5 items left)
+Quick Start
+-----------
+1. **Prepare Google Sheet**  
+   - Create a new sheet.  
+   - Copy the Spreadsheet ID (between `/d/` and `/edit/`).
 
-🌍 Multi-language UI — Polish, English, German, French, Spanish
+2. **Deploy the Google Apps Script backend**  
+   - Open https://script.google.com → *New project*.  
+   - Replace contents with `Code.gs`, set your `SPREADSHEET_ID`.  
+   - Deploy as a Web App (`Deploy → New deployment → Web app`).  
+   - Execute as: *Me*. Who has access: *Anyone*.  
+   - Copy the Web App URL (`.../exec`) — this is your **Lock URL**.
 
-📧 Two-sided email notifications
+3. **Configure the front-end**  
+   - Open `app.js` and set the `CONFIG` constant:  
+     - `API_BASE`: URL of your proxy (recommended) or leave placeholder until ready.  
+     - `GAS_EXEC_FALLBACK`: direct Apps Script URL for local/dev use only.  
+   - Commit the entire repo to GitHub and push to `main`.  
+   - Ensure GitHub Pages is enabled (Settings → Pages → Source → GitHub Actions).
 
-Customer receives confirmation + code + QR
+4. **Auto-deploy via GitHub Pages**  
+   - Workflow `.github/workflows/pages.yml` publishes everything on each push to `main`.  
+   - Your site will be served at `https://<user>.github.io/<repo>/`.
 
-Seller receives notification + buyer contact + remaining quantity
+5. **Generate your first offer**  
+   - Visit `index.html` on your hosted site.  
+   - Fill offer details, quantity, language, Lock URL, License key.  
+   - Click **Generate Link**.  
+   - Copy:  
+     - **Direct link** → `offer.html#fsl=...` for QR codes / landing pages.  
+     - **Social link** → proxied Apps Script URL with OG metadata (optional).  
+   - Share the direct link with customers; the viewer page loads entirely from cache after first visit.
 
-📱 Responsive & mobile-friendly layout
+PWA Behaviour
+-------------
+- `manifest.webmanifest` registers icons, theme colors, and `offer.html` as start URL.  
+- `service-worker.js` precaches core assets (HTML, JS, CSS, icons, i18n) for offline access.  
+- Both `index.html` and `offer.html` register the service worker and link the manifest.  
+- Lighthouse PWA audits (installability, offline support) target passing scores ≥90.
 
-🔒 No login, no backend — everything works via Google Sheets + Apps Script
+Backend Interactions
+--------------------
+- Viewer fetches status and submits claims via `CONFIG.API_BASE` (`/status`, `/claim`).  
+- If no proxy is configured, the app falls back to the Lock URL or `GAS_EXEC_FALLBACK`, including required `license_key` and `base` parameters.  
+- Offline mode still allows rendering and form submission; claims queue locally until connectivity returns (manual refresh).
 
-🔗 Auto-generated social link with OpenGraph preview for Facebook / Instagram / X / Telegram
+Email Workflow
+--------------
+| Event | Recipient | Content |
+| --- | --- | --- |
+| New reservation | Customer | Confirmation with claim code + QR. |
+|  | Seller | Buyer contact, code, remaining quantity. |
 
-🧩 Architecture
-Component	Purpose
-index.html	Front-end PWA-style web page (runs locally or hosted anywhere)
-Code.gs	Google Apps Script backend (REST endpoint + email logic)
-Google Sheets	Lightweight storage for offers (offers) and claims (claims)
-Apps Script Web App URL	Used as “Lock URL” in the front-end
-🚀 Setup Guide
-1️⃣ Prepare Google Sheet
+Emails send via `MailApp.sendEmail()` from the account that owns the Apps Script deployment.  
+Daily quotas: ~100/day (consumer Gmail) up to ~1500/day (Workspace).
 
-Create a new Google Sheet.
+Data Stored in Google Sheets
+----------------------------
+**offers sheet**
+- `token`, `title`, `desc`, `startISO`, `dur_min`, `tz`, `qty_total`, `qty_claimed`
+- `lang`, `item_name`, `item_url`, `item_image`, `vendor`
+- `seller_email`, `license_key`
 
-Copy its Spreadsheet ID from the URL (the part between /d/ and /edit).
+**claims sheet**
+- `token`, `email`, `code`, `claimedAt`, `lang`
 
-You don’t need to create any columns — the script will do this automatically.
+Social Link Mechanics
+---------------------
+- Direct link: `https://<user>.github.io/<repo>/offer.html#fsl=...` (base64url config in `#hash`).  
+- Social link (optional): `https://<proxy or GAS>/exec?share=1&fsl=...&base=...` serves OG meta for Facebook/Instagram/X/Telegram before redirecting users to the direct link.
 
-2️⃣ Create the Google Apps Script backend
+Limits
+------
+| Resource | Free Gmail | Workspace |
+| --- | --- | --- |
+| Emails per day | ~100 | ~1500 |
+| Apps Script runtime | 90 minutes | 6+ hours |
+| Sheets limit | 10M cells | same |
+| Practical traffic | ~5k reservations/day | higher |
 
-Go to https://script.google.com/
-, click New project.
-
-Replace the contents of Code.gs with the provided full version from this repo.
-
-Set your SPREADSHEET_ID at the top of the file.
-
-Click Deploy → New deployment → Web app
-
-Execute as: Me
-
-Who has access: Anyone
-
-Click Deploy, copy the Web App URL (it ends with /exec).
-This will be your Lock URL.
-
-3️⃣ Host the front-end
-
-Upload index.html and README.md to a GitHub repository.
-
-Enable GitHub Pages for this repo (Settings → Pages → Source → main branch → /root).
-
-Your app will be available at
-https://<your-github-username>.github.io/<repo-name>/index.html
-
-4️⃣ Generate your first offer
-
-Open your hosted index.html in a browser.
-
-Fill out:
-
-Offer title and description
-
-Product name, image, URL, quantity
-
-Start time, duration, timezone
-
-Seller email (for notifications)
-
-Lock URL (your Apps Script /exec URL)
-
-Click Generate link.
-
-Copy either:
-
-Direct link — the hash link for QR codes or websites
-
-Social link — for Facebook, Instagram, Telegram (includes OpenGraph preview)
-
-Share it anywhere!
-
-💌 Email Workflow
-Event	Recipient	Content
-New reservation / purchase	Customer	Confirmation with code + QR
-	Seller	Buyer contact, code, remaining quantity
-
-Emails are sent via MailApp.sendEmail() from the account that owns the Apps Script project.
-Typical daily limits: ~100/day for free Gmail, ~1500/day for Workspace accounts.
-
-🗂 Data stored in Google Sheets
-offers sheet
-Column	Description
-token	unique offer ID
-title	offer title
-desc	description
-startISO	start date/time
-dur_min	duration (minutes)
-tz	timezone
-qty_total / qty_claimed	total vs. claimed count
-lang	interface language
-item_name / item_url / item_image / vendor	product info
-seller_email	notification target
-claims sheet
-Column	Description
-token	offer ID
-email	customer email
-code	confirmation code
-claimedAt	timestamp
-lang	language for this claim
-🧠 How social previews work
-
-When you generate an offer, two links are created:
-
-Direct link → index.html#fsl=... (opens instantly)
-
-Social link → https://script.google.com/macros/s/.../exec?share=1&fsl=...&base=...
-
-Social networks fetch this one to read the OpenGraph meta (title, image, description).
-
-Real users are automatically redirected to the index.html version.
-
-So you can safely use the Social link everywhere — it both previews nicely and opens the app.
-
-🧰 Tech stack
-
-Front-end: pure HTML + JS (no framework)
-
-Backend: Google Apps Script (serverless)
-
-Storage: Google Sheets
-
-Emails: Gmail API via MailApp
-
-Hosting: GitHub Pages or any static host
-
-QR generation: api.qrserver.com
-
-⚠️ Limits
-Resource	Free Gmail	Workspace
-Emails/day	~100	~1500
-Script run-time/day	90 minutes	6 hours+
-Rows in Sheet	10 million cells	same
-Typical safe traffic	up to ~5k reservations/day	higher
-🧑‍💻 License
-
-Apache-2.0 © 2025 — created by Leryk
+License
+-------
+Apache-2.0 © 2025 — created by Leryk.

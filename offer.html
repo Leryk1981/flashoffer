@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FlashOffer · Offer</title>
+<meta name="theme-color" content="#2a62ff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+<link rel="manifest" href="./manifest.webmanifest">
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="viewer">
+    <div id="itemCard" class="hid">
+      <img id="itemImg" alt="">
+      <div style="flex:1 1 auto;min-width:0">
+        <div id="itemName" class="title" style="margin:0"></div>
+        <div id="itemVendor" class="mut"></div>
+        <div id="itemHost" class="mut"></div>
+      </div>
+      <button id="openItem" class="btn inline">Open</button>
+    </div>
+
+    <div class="title" id="v_title">Offer</div>
+    <div class="mut" id="v_desc"></div>
+
+    <div class="timer" id="timer">00:00:00</div>
+    <div class="stack" style="justify-content:center; gap:16px">
+      <div class="pill warn" id="status"><span>Not started yet</span></div>
+      <div class="pill" id="stock"></div>
+    </div>
+    <div class="center mut" id="range"></div>
+
+    <div class="row" id="claimBox">
+      <div>
+        <label id="lbl_email" for="email">Your e-mail (confirmation)</label>
+        <input id="email" type="email" placeholder="you@example.com">
+      </div>
+      <button class="btn" id="claim">Reserve</button>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="ics">Add to calendar (.ics)</button>
+    </div>
+  </div>
+
+  <div class="card hid text-error" id="error"></div>
+</div>
+
+<script type="module">
+  import { initOfferPage } from './app.js';
+  initOfferPage();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js');
+  });
+}
+</script>
+</body>
+</html>
