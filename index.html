@@ -311,7 +311,6 @@
 
 
     <div class="row" id="claimBox" style="margin-top:14px">
-      <div><label id="lbl_phone">Your phone number</label><input id="phone" inputmode="tel" placeholder="+48 ..." /></div>
       <div><label id="lbl_email">Your e-mail (confirmation)</label><input id="email" type="email" placeholder="you@example.com" /></div>
       <button class="btn" id="claim">Reserve</button>
     </div>
@@ -330,11 +329,9 @@
       reserved: 'Zarezerwowana',
       soldOut: 'Wyprzedane',
       remaining: (n)=> `Pozostało: ${n}`,
-      phoneLabel: 'Twój numer telefonu',
       emailLabel: 'Twój e-mail (potwierdzenie)',
       reserve: 'Rezerwuj',
       addToCal: 'Dodaj do kalendarza (.ics)',
-      enterPhone: 'Podaj numer telefonu',
       enterEmail: 'Podaj e-mail',
       open: 'Otwórz'
     },
@@ -345,11 +342,9 @@
       reserved: 'Reserved',
       soldOut: 'Sold out',
       remaining: (n)=> `Remaining: ${n}`,
-      phoneLabel: 'Your phone number',
       emailLabel: 'Your e-mail (confirmation)',
       reserve: 'Reserve',
       addToCal: 'Add to calendar (.ics)',
-      enterPhone: 'Enter phone number',
       enterEmail: 'Enter e-mail',
       open: 'Open'
     },
@@ -360,11 +355,9 @@
       reserved: 'Reserviert',
       soldOut: 'Ausverkauft',
       remaining: (n)=> `Verfügbar: ${n}`,
-      phoneLabel: 'Ihre Telefonnummer',
       emailLabel: 'Ihre E-Mail (Bestätigung)',
       reserve: 'Reservieren',
       addToCal: 'Zum Kalender hinzufügen (.ics)',
-      enterPhone: 'Telefonnummer eingeben',
       enterEmail: 'E-Mail eingeben',
       open: 'Öffnen'
     },
@@ -375,11 +368,9 @@
       reserved: 'Réservé',
       soldOut: 'Épuisé',
       remaining: (n)=> `Restant : ${n}`,
-      phoneLabel: 'Votre téléphone',
       emailLabel: 'Votre e-mail (confirmation)',
       reserve: 'Réserver',
       addToCal: 'Ajouter au calendrier (.ics)',
-      enterPhone: 'Entrez le téléphone',
       enterEmail: 'Entrez l’e-mail',
       open: 'Ouvrir'
     },
@@ -390,11 +381,9 @@
       reserved: 'Reservado',
       soldOut: 'Agotado',
       remaining: (n)=> `Disponible: ${n}`,
-      phoneLabel: 'Tu teléfono',
       emailLabel: 'Tu e-mail (confirmación)',
       reserve: 'Reservar',
       addToCal: 'Añadir al calendario (.ics)',
-      enterPhone: 'Introduce el teléfono',
       enterEmail: 'Introduce el e-mail',
       open: 'Abrir'
     }
@@ -491,7 +480,6 @@
 
   function setLang(lang){
     T = I18N[lang] || I18N.pl;
-    $("lbl_phone").textContent = T.phoneLabel;
     $("lbl_email").textContent = T.emailLabel;
     $("claim").textContent = T.reserve;
     $("ics").textContent = T.addToCal;
@@ -581,9 +569,7 @@
     await fetchStatus(); pollId = setInterval(fetchStatus, 5000);
 
     $("claim").onclick = async ()=>{
-      const phone = $("phone").value.trim();
       const email = $("email").value.trim();
-      if (!phone){ alert(T.enterPhone); return; }
       if (!email){ alert(T.enterEmail); return; }
       $("claim").disabled = true;
 
@@ -594,7 +580,7 @@
 		  const base = location.href.split('#')[0];
           const r = await fetch(cfg.lockurl, { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({
-              token: cfg.token, phone, email,
+              token: cfg.token, email,
               title: cfg.title, desc: cfg.desc,
               startISO: cfg.start, dur: cfg.dur, tz: cfg.tz,
               qty: cfg.qty, lang: cfg.lang,

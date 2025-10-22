@@ -116,7 +116,6 @@ claims sheet
 Column	Description
 token	offer ID
 email	customer email
-phone	customer phone (masked)
 code	confirmation code
 claimedAt	timestamp
 lang	language for this claim
