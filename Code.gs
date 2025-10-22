@@ -45,10 +45,17 @@ function _claimsSheet(ssOpt){
 /* ====== UTILS ====== */
 function _corsHeaders(out, origin){
   const allow = origin || '*';
-  return out
-    .setHeader('Access-Control-Allow-Origin', allow)
-    .setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  const headers={
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  };
+  if(typeof out.setHeaders==='function'){
+    out.setHeaders(headers);
+  }else if(typeof out.setHeader==='function'){
+    Object.keys(headers).forEach(k=>out.setHeader(k, headers[k]));
+  }
+  return out;
 }
 function _json(obj, code, origin){
   const out = ContentService.createTextOutput(JSON.stringify(obj))
@@ -62,6 +69,7 @@ function _qrUrl(t){return 'https://api.qrserver.com/v1/create-qr-code/?size=200x
 function _fmtDate(iso,tz){try{const d=new Date(iso);return Utilities.formatDate(d, tz||Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');}catch(_){return iso||'';}}
 function _parseFsl(fsl){try{const b64=String(fsl||'').replace(/-/g,'+').replace(/_/g,'/');const raw=Utilities.base64Decode(b64);return JSON.parse(Utilities.newBlob(raw).getDataAsString());}catch(_){return {};}}
 function hostFromUrl_(u){try{return new URL(u).host;}catch(_){return'';}}
+function originFromUrl_(u){try{return new URL(u).origin;}catch(_){return'*';}}
 function _debugLog(m){try{_sheet(SHEET_LOGS,['ts','msg']).appendRow([new Date(), String(m)]);}catch(_){}}
 
 /* ====== LICENSES ====== */
@@ -97,6 +105,7 @@ function createLicense(owner_email, allowed_domains, quota_total){
 function doGet(e){
   try{
     const p=(e&&e.parameter)?e.parameter:{};
+    const origin=originFromUrl_((p.base||'').trim());
 
     // UI: открываем встроенную страницу (без CORS)
     if(String(p.ui||'')==='1'){
@@ -111,10 +120,10 @@ function doGet(e){
 
     if(p.token){
       const lic=_checkLicense((p.license_key||'').trim(), hostFromUrl_((p.base||'').trim()));
-      if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code);
-      return _status(e);
+      if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code, origin);
+      return _status(e, origin);
     }
-    return _json({ok:false,error:'bad_request'},400);
+    return _json({ok:false,error:'bad_request'},400, origin);
 
   }catch(err){
     _debugLog('doGet exception: '+(err&&err.stack||err));
@@ -123,15 +132,15 @@ function doGet(e){
 }
 
 /* ====== STATUS (GET) ====== */
-function _status(e){
-  const token=(e.parameter.token||'').trim(); if(!token) return _json({ok:false,error:'bad_request'},400);
+function _status(e, origin){
+  const token=(e.parameter.token||'').trim(); if(!token) return _json({ok:false,error:'bad_request'},400,origin);
   const sh=_sheet(SHEET_OFFERS,['token','title','desc','startISO','dur_min','tz','qty_total','qty_claimed','createdAt','lang','item_name','item_url','item_image','vendor','seller_email']);
   const data=sh.getDataRange().getValues();
   const row=data.find((r,i)=>i>0&&r[0]===token);
-  if(!row) return _json({ok:true,exists:false,claimed:false,remaining:null});
+  if(!row) return _json({ok:true,exists:false,claimed:false,remaining:null},200,origin);
   const qtyTotal=Number(row[6]||0), qtyClaim=Number(row[7]||0);
   const remaining=Math.max(0, qtyTotal-qtyClaim), claimed=remaining===0;
-  return _json({ok:true,exists:true,claimed,remaining,qty_total:qtyTotal,qty_claimed:qtyClaim});
+  return _json({ok:true,exists:true,claimed,remaining,qty_total:qtyTotal,qty_claimed:qtyClaim},200,origin);
 }
 
 /* ====== SHARE (OG + redirect) ====== */
@@ -168,7 +177,8 @@ function _shareLanding(e){
 
 function doOptions(e){
   const out = ContentService.createTextOutput('').setMimeType(ContentService.MimeType.TEXT).setResponseCode(204);
-  return _corsHeaders(out);
+  const origin = e && e.parameter ? originFromUrl_((e.parameter.base||'').trim()) : '*';
+  return _corsHeaders(out, origin);
 }
 
 /* ====== CLAIM (POST) ====== */
@@ -176,10 +186,11 @@ function doPost(e){
   try{
     let b={}; try{ b=JSON.parse(e.postData.contents||'{}'); }catch(_){}
     const token=(b.token||'').trim(), email=(b.email||'').trim(), license_key=(b.license_key||'').trim();
-    if(!token||!email||!license_key) return _json({ok:false,error:'bad_request'},400);
+    const baseOrigin=originFromUrl_((b.base||'').trim());
+    if(!token||!email||!license_key) return _json({ok:false,error:'bad_request'},400,baseOrigin);
 
     const lic=_checkLicense(license_key, hostFromUrl_((b.base||'').trim()));
-    if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code);
+    if(!lic.ok) return _json({ok:false,error:lic.err}, lic.code, baseOrigin);
 
     const lock=LockService.getScriptLock(); lock.tryLock(5000);
     try{
@@ -193,7 +204,7 @@ function doPost(e){
         idx=shO.getLastRow()-1; row=shO.getRange(idx+1,1,1,15).getValues()[0];
       }else{ row=shO.getRange(idx+1,1,1,15).getValues()[0]; }
       const qtyTotal=Number(row[6]||0), qtyClaim=Number(row[7]||0);
-      if(Math.max(0,qtyTotal-qtyClaim)<=0) return _json({ok:false,error:'conflict',remaining:0},409);
+      if(Math.max(0,qtyTotal-qtyClaim)<=0) return _json({ok:false,error:'conflict',remaining:0},409,baseOrigin);
 
       const code=_code(8);
       shC.appendRow([token,email,code,new Date(),(b.lang||row[9]||'pl')]);
@@ -234,7 +245,7 @@ function doPost(e){
       }
 
       _incLicenseQuota(lic);
-      return _json({ok:true,remaining:left},200);
+      return _json({ok:true,remaining:left},200,baseOrigin);
 
     }finally{ try{lock.releaseLock();}catch(_){}} 
   }catch(err){
