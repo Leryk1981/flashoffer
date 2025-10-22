@@ -2,6 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8" />
+<meta name="exec-url" content="<?= execUrl ?>">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>FlashOffer · Countdown</title>
 <meta name="theme-color" content="#000000" />
@@ -319,7 +320,10 @@
 </div>
 
 <script>
-  const EXEC_URL = (location.origin + location.pathname).replace(/\/dev$/, '/exec');
+  const EXEC_URL = (
+    document.querySelector('meta[name="exec-url"]')?.content ||
+    (location.origin + location.pathname)
+  ).replace(/\/dev$/, '/exec');
   // ---------- i18n ----------
   const I18N = {
     pl: {
@@ -427,7 +431,8 @@
 
     $("gen").onclick = ()=>{
       const cfg = readCfg();
-	  const base = EXEC_URL + '?ui=1';
+      const baseExec = (cfg.lockurl || EXEC_URL).split('?')[0];
+	  const base = baseExec + '?ui=1';
 	  const hash = makeHash(cfg);                  // "fsl=<b64url-json>"
 	  const direct = base + '#' + hash;
 	  $("link").value = direct;
