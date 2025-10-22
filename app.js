@@ -1,6 +1,7 @@
 export const CONFIG = {
-  API_BASE: 'https://<your-pages-domain>/api',
-  GAS_EXEC_FALLBACK: 'https://script.google.com/macros/s/XXX/exec'
+  API_BASE: 'https://flashoffer-proxy.s-myasoedov81.workers.dev/api',
+  GAS_EXEC_FALLBACK:
+    'https://script.google.com/macros/s/AKfycbx1IB8mgN0gXHUfueW0BmerjUgjJxNvMMbBi1W6M3O4TsALtRjc6qazbRCCgOSKOton/exec'
 };
 
 const STORAGE_KEY = 'flashoffer:last';
