@@ -44,9 +44,10 @@ function _claimsSheet(ssOpt){
 
 /* ====== UTILS ====== */
 function _json(obj, code){
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setResponseCode(code||200);
+  const out=ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+  // Apps Script TextOutput не поддерживает кастомные HTTP-коды; оставляем 200.
+  return out;
 }
 function _escapeHtml(s){return String(s||'').replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
 function _code(n=8){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<n;i++) s+=a[(Math.random()*a.length)|0];return s;}
@@ -165,8 +166,7 @@ function _shareLanding(e){
 
 function doOptions(e){
   return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.TEXT)
-    .setResponseCode(204);
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 /* ====== CLAIM (POST) ====== */
