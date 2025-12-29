@@ -1,0 +1,14 @@
+{
+  "name": "flashoffer",
+  "version": "1.0.0",
+  "description": "FlashOffer PWA for publishing limited-time offers with a Google Apps Script backend.",
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "validate": "npm run lint --if-present && npm test --if-present && npm run build --if-present"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Leryk",
+  "license": "Apache-2.0"
+}
